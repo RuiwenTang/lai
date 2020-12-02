@@ -30,6 +30,8 @@ includes = include_directories('include')
 
 library = static_library('lai', sources,
     include_directories: includes,
+    c_args: ['-ffreestanding', '-nostdlib'],
+    link_args: ['-lgcc'],
     pic: false)
 
 dependency = declare_dependency(link_with: library,
