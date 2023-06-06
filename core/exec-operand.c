@@ -1,13 +1,14 @@
 /*
- * Lightweight ACPI Implementation
- * Copyright (C) 2018-2020 the lai authors
+ * Lightweight AML Interpreter
+ * Copyright (C) 2018-2023 The lai authors
  */
 
 #include <lai/core.h>
-#include "libc.h"
-#include "opregion.h"
+
 #include "exec_impl.h"
+#include "libc.h"
 #include "ns_impl.h"
+#include "opregion.h"
 
 size_t lai_exec_string_length(lai_variable_t *str) {
     LAI_ENSURE(str->type == LAI_STRING);
@@ -77,6 +78,7 @@ void lai_exec_access(lai_variable_t *object, lai_nsnode_t *src) {
             break;
         case LAI_NAMESPACE_FIELD:
         case LAI_NAMESPACE_INDEXFIELD:
+        case LAI_NAMESPACE_BANKFIELD:
             lai_read_opregion(object, src);
             break;
         case LAI_NAMESPACE_BUFFER_FIELD:
@@ -137,13 +139,14 @@ void lai_store_ns(lai_nsnode_t *target, lai_variable_t *object) {
             break;
         case LAI_NAMESPACE_FIELD:
         case LAI_NAMESPACE_INDEXFIELD:
+        case LAI_NAMESPACE_BANKFIELD:
             lai_write_opregion(target, object);
             break;
         case LAI_NAMESPACE_BUFFER_FIELD:
             lai_write_buffer(target, object);
             break;
         default:
-            lai_panic("unexpected type %d of named object in lai_store_ns()");
+            lai_panic("unexpected type %d of named object in lai_store_ns()", target->type);
     }
 }
 
@@ -152,15 +155,15 @@ void lai_exec_mutate_ns(lai_nsnode_t *target, lai_variable_t *object) {
         case LAI_NAMESPACE_NAME:
             switch (target->object.type) {
                 case LAI_INTEGER:
-                    if(lai_mutate_integer(&target->object, object))
+                    if (lai_mutate_integer(&target->object, object))
                         lai_panic("lai_mutate_integer() failed");
                     break;
                 case LAI_STRING:
-                    if(lai_mutate_string(&target->object, object))
+                    if (lai_mutate_string(&target->object, object))
                         lai_panic("lai_mutate_string() failed");
                     break;
                 case LAI_BUFFER:
-                    if(lai_mutate_buffer(&target->object, object))
+                    if (lai_mutate_buffer(&target->object, object))
                         lai_panic("lai_mutate_buffer() failed");
                     break;
                 case LAI_PACKAGE: {
@@ -182,20 +185,20 @@ void lai_exec_mutate_ns(lai_nsnode_t *target, lai_variable_t *object) {
             break;
         case LAI_NAMESPACE_FIELD:
         case LAI_NAMESPACE_INDEXFIELD:
+        case LAI_NAMESPACE_BANKFIELD:
             lai_write_opregion(target, object);
             break;
         case LAI_NAMESPACE_BUFFER_FIELD:
             lai_write_buffer(target, object);
             break;
         default:
-            lai_panic("unexpected type %d of named object in lai_exec_mutate_ns()");
+            lai_panic("unexpected type %d of named object in lai_exec_mutate_ns()", target->type);
     }
 }
 
 // lai_operand_mutate(): Modifies the operand in-place to store the object.
 //                       This is the type of store used by Store() and arithmetic operators.
-void lai_operand_mutate(lai_state_t *state,
-                        struct lai_operand *dest, lai_variable_t *object) {
+void lai_operand_mutate(lai_state_t *state, struct lai_operand *dest, lai_variable_t *object) {
     // First, handle stores to AML references (returned by Index() and friends).
     if (dest->tag == LAI_OPERAND_OBJECT) {
         switch (dest->object.type) {
@@ -254,7 +257,7 @@ void lai_operand_mutate(lai_state_t *state,
             break;
         }
         case LAI_DEBUG_NAME:
-            if(laihost_handle_amldebug)
+            if (laihost_handle_amldebug)
                 laihost_handle_amldebug(object);
             else {
                 switch (object->type) {
@@ -265,7 +268,7 @@ void lai_operand_mutate(lai_state_t *state,
                         lai_debug("Debug(): string(\"%s\")", lai_exec_string_access(object));
                         break;
                     case LAI_BUFFER:
-                        lai_debug("Debug(): buffer(%X)", (size_t)lai_exec_buffer_access(object));
+                        lai_debug("Debug(): buffer(%lX)", (size_t)lai_exec_buffer_access(object));
                         break;
                     default:
                         lai_debug("Debug(): type %d", object->type);
@@ -279,8 +282,7 @@ void lai_operand_mutate(lai_state_t *state,
 
 // lai_operand_emplace(): Stores the object to the operand, replacing the current contents.
 //                        This is used by CopyObject() and type conversion operators.
-void lai_operand_emplace(lai_state_t *state,
-                         struct lai_operand *dest, lai_variable_t *object) {
+void lai_operand_emplace(lai_state_t *state, struct lai_operand *dest, lai_variable_t *object) {
     // First, handle stores to AML references (returned by Index() and friends).
     if (dest->tag == LAI_OPERAND_OBJECT) {
         switch (dest->object.type) {
@@ -339,7 +341,7 @@ void lai_operand_emplace(lai_state_t *state,
             break;
         }
         case LAI_DEBUG_NAME:
-            if(laihost_handle_amldebug)
+            if (laihost_handle_amldebug)
                 laihost_handle_amldebug(object);
             else {
                 switch (object->type) {
@@ -350,7 +352,7 @@ void lai_operand_emplace(lai_state_t *state,
                         lai_debug("Debug(): string(\"%s\")", lai_exec_string_access(object));
                         break;
                     case LAI_BUFFER:
-                        lai_debug("Debug(): buffer(%X)", (size_t)lai_exec_buffer_access(object));
+                        lai_debug("Debug(): buffer(%lX)", (size_t)lai_exec_buffer_access(object));
                         break;
                     default:
                         lai_debug("Debug(): type %d", object->type);
@@ -367,7 +369,7 @@ void lai_operand_emplace(lai_state_t *state,
 // Returns immediate objects and indices as-is (i.e., without load from a name).
 // Returns a view of an existing object and not a clone of the object.
 void lai_exec_get_objectref(lai_state_t *state, struct lai_operand *src, lai_variable_t *object) {
-    (void) state;
+    (void)state;
     LAI_ENSURE(src->tag == LAI_OPERAND_OBJECT);
     lai_var_assign(object, &src->object);
 }
@@ -375,25 +377,23 @@ void lai_exec_get_objectref(lai_state_t *state, struct lai_operand *src, lai_var
 // Load an integer.
 // Returns immediate objects as-is.
 void lai_exec_get_integer(lai_state_t *state, struct lai_operand *src, lai_variable_t *object) {
-    (void) state;
+    (void)state;
     LAI_ENSURE(src->tag == LAI_OPERAND_OBJECT);
     lai_variable_t temp = {0};
     lai_var_assign(&temp, &src->object);
-    if(temp.type != LAI_INTEGER)
+    if (temp.type != LAI_INTEGER)
         lai_panic("lai_load_integer() expects an integer, not a value of type %d", temp.type);
     lai_var_move(object, &temp);
 }
 
 // lai_write_buffer(): Writes to a BufferField.
 static void lai_write_buffer(lai_nsnode_t *handle, lai_variable_t *source) {
-    lai_nsnode_t *buffer_handle = handle->bf_node;
-
     uint64_t value = source->integer;
 
     // Offset that we are writing to, in bytes.
     size_t offset = handle->bf_offset;
     size_t size = handle->bf_size;
-    uint8_t *data = lai_exec_buffer_access(&buffer_handle->object);
+    uint8_t *data = handle->bf_buffer->content;
 
     size_t n = 0; // Number of bits that have been written.
     while (n < size) {
@@ -416,26 +416,25 @@ static void lai_write_buffer(lai_nsnode_t *handle, lai_variable_t *source) {
 
 // lai_read_buffer(): Reads from a BufferField.
 static void lai_read_buffer(lai_variable_t *dest, lai_nsnode_t *handle) {
-	lai_nsnode_t *buffer_handle = handle->bf_node;
+    size_t offset = handle->bf_offset;
+    size_t size = handle->bf_size;
+    uint8_t *data = handle->bf_buffer->content;
 
-	size_t offset = handle->bf_offset;
-	size_t size = handle->bf_size;
-	uint8_t *data = lai_exec_buffer_access(&buffer_handle->object);
-	dest->type = LAI_INTEGER;
-	dest->integer = 0;
+    dest->type = LAI_INTEGER;
+    dest->integer = 0;
 
-	size_t n = 0;
-	while(n < size) {
-		int bit = (offset + n) & 7;
-		int m = size - n;
-		if (m > (8 - bit))
-			m = 8 - bit;
-		LAI_ENSURE(m); // read at least one bit.
-		uint8_t mask = (1 << m) - 1;
-		uint8_t cur_byte = data[(offset + n) >> 3];
-		uint8_t to_write = ((cur_byte & mask));
+    size_t n = 0;
+    while (n < size) {
+        int bit = (offset + n) & 7;
+        int m = size - n;
+        if (m > (8 - bit))
+            m = 8 - bit;
+        LAI_ENSURE(m); // read at least one bit.
+        uint8_t mask = (1 << m) - 1;
+        uint8_t cur_byte = data[(offset + n) >> 3];
+        uint8_t to_write = ((cur_byte & mask));
 
-		dest->integer |= (uint64_t)to_write << n;
-		n += m;
-	}
+        dest->integer |= (uint64_t)to_write << n;
+        n += m;
+    }
 }

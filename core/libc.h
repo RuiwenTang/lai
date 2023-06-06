@@ -1,10 +1,12 @@
-
 /*
- * Lightweight ACPI Implementation
- * Copyright (C) 2018-2020 the lai authors
+ * Lightweight AML Interpreter
+ * Copyright (C) 2018-2023 The lai authors
  */
 
 #pragma once
+
+#include <stdarg.h>
+#include <stddef.h>
 
 // LAI internal header
 

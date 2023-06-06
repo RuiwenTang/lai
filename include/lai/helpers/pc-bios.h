@@ -1,6 +1,6 @@
 /*
- * Lightweight ACPI Implementation
- * Copyright (C) 2018-2020 the lai authors
+ * Lightweight AML Interpreter
+ * Copyright (C) 2018-2023 The lai authors
  */
 
 #pragma once
@@ -21,7 +21,7 @@ struct lai_rsdp_info {
 };
 
 lai_api_error_t lai_bios_detect_rsdp_within(uintptr_t base, size_t length,
-        struct lai_rsdp_info *info);
+                                            struct lai_rsdp_info *info);
 
 lai_api_error_t lai_bios_detect_rsdp(struct lai_rsdp_info *info);
 

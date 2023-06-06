@@ -1,6 +1,6 @@
 /*
- * Lightweight ACPI Implementation
- * Copyright (C) 2018-2020 the lai authors
+ * Lightweight AML Interpreter
+ * Copyright (C) 2018-2023 The lai authors
  */
 
 #pragma once
@@ -17,9 +17,6 @@ typedef enum lai_api_error {
     LAI_ERROR_NO_SUCH_NODE,
     LAI_ERROR_OUT_OF_BOUNDS,
     LAI_ERROR_EXECUTION_FAILURE,
-
-    // Notify() was called on node without override.
-    LAI_ERROR_MISSING_NOTIFY,
 
     LAI_ERROR_ILLEGAL_ARGUMENTS,
 

@@ -1,7 +1,6 @@
-
 /*
- * Lightweight ACPI Implementation
- * Copyright (C) 2018-2020 the lai authors
+ * Lightweight AML Interpreter
+ * Copyright (C) 2018-2023 The lai authors
  */
 
 // Internal header file. Do not use outside of LAI.
@@ -13,7 +12,7 @@
 // Namespace management.
 lai_nsnode_t *lai_create_nsnode(void);
 lai_nsnode_t *lai_create_nsnode_or_die(void);
-void lai_install_nsnode(lai_nsnode_t *node);
+lai_api_error_t lai_install_nsnode(lai_nsnode_t *node);
 void lai_uninstall_nsnode(lai_nsnode_t *node);
 
 // Sets the name and parent of a namespace node.
