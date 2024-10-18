@@ -75,9 +75,7 @@ static lai_api_error_t lai_exec_reduce_node(int opcode, lai_state_t *state,
             node->type = LAI_NAMESPACE_NAME;
             lai_do_resolve_new_node(node, ctx_handle, &amln);
             lai_var_move(&node->object, &object);
-            lai_api_error_t err = lai_install_nsnode(node);
-            if (err != LAI_ERROR_NONE)
-                return err;
+            LAI_TRY(lai_install_nsnode(node));
 
             struct lai_ctxitem *ctxitem = lai_exec_peek_ctxstack_back(state);
             if (ctxitem->invocation)
@@ -90,7 +88,7 @@ static lai_api_error_t lai_exec_reduce_node(int opcode, lai_state_t *state,
         case DWORDFIELD_OP:
         case QWORDFIELD_OP: {
             lai_variable_t offset = {0};
-            lai_exec_get_integer(state, &operands[1], &offset);
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &offset));
             LAI_ENSURE(operands[2].tag == LAI_UNRESOLVED_NAME);
 
             struct lai_amlname node_amln;
@@ -134,9 +132,7 @@ static lai_api_error_t lai_exec_reduce_node(int opcode, lai_state_t *state,
                     break;
             }
 
-            lai_api_error_t err = lai_install_nsnode(node);
-            if (err != LAI_ERROR_NONE)
-                return err;
+            LAI_TRY(lai_install_nsnode(node));
 
             struct lai_ctxitem *ctxitem = lai_exec_peek_ctxstack_back(state);
             if (ctxitem->invocation)
@@ -146,8 +142,9 @@ static lai_api_error_t lai_exec_reduce_node(int opcode, lai_state_t *state,
         case (EXTOP_PREFIX << 8) | ARBFIELD_OP: {
             lai_variable_t offset = {0};
             lai_variable_t size = {0};
-            lai_exec_get_integer(state, &operands[1], &offset);
-            lai_exec_get_integer(state, &operands[2], &size);
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &offset));
+            LAI_TRY(lai_exec_get_integer(state, &operands[2], &size));
+
             LAI_ENSURE(operands[3].tag == LAI_UNRESOLVED_NAME);
 
             struct lai_amlname node_amln;
@@ -165,9 +162,7 @@ static lai_api_error_t lai_exec_reduce_node(int opcode, lai_state_t *state,
             node->bf_size = size.integer;
             node->bf_offset = offset.integer;
 
-            lai_api_error_t err = lai_install_nsnode(node);
-            if (err != LAI_ERROR_NONE)
-                return err;
+            LAI_TRY(lai_install_nsnode(node));
 
             struct lai_ctxitem *ctxitem = lai_exec_peek_ctxstack_back(state);
             if (ctxitem->invocation)
@@ -177,8 +172,9 @@ static lai_api_error_t lai_exec_reduce_node(int opcode, lai_state_t *state,
         case (EXTOP_PREFIX << 8) | OPREGION: {
             lai_variable_t base = {0};
             lai_variable_t size = {0};
-            lai_exec_get_integer(state, &operands[2], &base);
-            lai_exec_get_integer(state, &operands[3], &size);
+            LAI_TRY(lai_exec_get_integer(state, &operands[2], &base));
+            LAI_TRY(lai_exec_get_integer(state, &operands[3], &size));
+
             LAI_ENSURE(operands[0].tag == LAI_UNRESOLVED_NAME);
             LAI_ENSURE(operands[1].tag == LAI_OPERAND_OBJECT
                        && operands[1].object.type == LAI_INTEGER);
@@ -193,9 +189,7 @@ static lai_api_error_t lai_exec_reduce_node(int opcode, lai_state_t *state,
             node->op_base = base.integer;
             node->op_length = size.integer;
 
-            lai_api_error_t err = lai_install_nsnode(node);
-            if (err != LAI_ERROR_NONE)
-                return err;
+            LAI_TRY(lai_install_nsnode(node));
 
             struct lai_ctxitem *ctxitem = lai_exec_peek_ctxstack_back(state);
             if (ctxitem->invocation)
@@ -249,7 +243,7 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         }
         case NOT_OP: {
             lai_variable_t operand = {0};
-            lai_exec_get_integer(state, operands, &operand);
+            LAI_TRY(lai_exec_get_integer(state, operands, &operand));
 
             result.type = LAI_INTEGER;
             result.integer = ~operand.integer;
@@ -258,7 +252,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         }
         case FINDSETLEFTBIT_OP: {
             LAI_CLEANUP_VAR lai_variable_t operand = LAI_VAR_INITIALIZER;
-            lai_exec_get_integer(state, operands, &operand);
+            LAI_TRY(lai_exec_get_integer(state, operands, &operand));
+
             result.type = LAI_INTEGER;
             int msb = 0;
             while (operand.integer != 0) {
@@ -272,7 +267,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         }
         case FINDSETRIGHTBIT_OP: {
             LAI_CLEANUP_VAR lai_variable_t operand = LAI_VAR_INITIALIZER;
-            lai_exec_get_integer(state, operands, &operand);
+            LAI_TRY(lai_exec_get_integer(state, operands, &operand));
+
             result.type = LAI_INTEGER;
             int lsb = 0;
             while (operand.integer != 0) {
@@ -488,8 +484,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case ADD_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = lhs.integer + rhs.integer;
@@ -499,8 +495,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case SUBTRACT_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = lhs.integer - rhs.integer;
@@ -510,8 +506,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case MOD_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = lhs.integer % rhs.integer;
@@ -521,8 +517,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case MULTIPLY_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = lhs.integer * rhs.integer;
@@ -532,8 +528,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case AND_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = lhs.integer & rhs.integer;
@@ -543,8 +539,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case OR_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = lhs.integer | rhs.integer;
@@ -554,8 +550,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case XOR_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = lhs.integer ^ rhs.integer;
@@ -565,8 +561,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case NAND_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = ~(lhs.integer & rhs.integer);
@@ -576,8 +572,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case NOR_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = ~(lhs.integer | rhs.integer);
@@ -587,8 +583,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case SHL_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = lhs.integer << rhs.integer;
@@ -598,8 +594,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case SHR_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = lhs.integer >> rhs.integer;
@@ -609,8 +605,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case DIVIDE_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             lai_variable_t mod = {0};
             lai_variable_t div = {0};
@@ -638,7 +634,7 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         }
         case LNOT_OP: {
             lai_variable_t operand = {0};
-            lai_exec_get_integer(state, operands, &operand);
+            LAI_TRY(lai_exec_get_integer(state, operands, &operand));
 
             result.type = LAI_INTEGER;
             result.integer = !operand.integer;
@@ -647,8 +643,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case LAND_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = lhs.integer && rhs.integer;
@@ -657,8 +653,8 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case LOR_OP: {
             lai_variable_t lhs = {0};
             lai_variable_t rhs = {0};
-            lai_exec_get_integer(state, &operands[0], &lhs);
-            lai_exec_get_integer(state, &operands[1], &rhs);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &lhs));
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &rhs));
 
             result.type = LAI_INTEGER;
             result.integer = lhs.integer || rhs.integer;
@@ -719,7 +715,7 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
             lai_variable_t object = {0};
             lai_variable_t index = {0};
             lai_exec_get_objectref(state, &operands[0], &object);
-            lai_exec_get_integer(state, &operands[1], &index);
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &index));
             size_t n = index.integer;
 
             switch (object.type) {
@@ -765,21 +761,21 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
                 return LAI_ERROR_UNEXPECTED_RESULT;
 
             LAI_CLEANUP_VAR lai_variable_t op1_var = LAI_VAR_INITIALIZER;
-            lai_exec_get_integer(state, &operands[1], &op1_var);
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &op1_var));
             size_t op1 = op1_var.integer;
 
             LAI_CLEANUP_VAR lai_variable_t object1 = LAI_VAR_INITIALIZER;
             lai_exec_get_objectref(state, &operands[2], &object1);
 
             LAI_CLEANUP_VAR lai_variable_t op2_var = LAI_VAR_INITIALIZER;
-            lai_exec_get_integer(state, &operands[3], &op2_var);
+            LAI_TRY(lai_exec_get_integer(state, &operands[3], &op2_var));
             size_t op2 = op2_var.integer;
 
             LAI_CLEANUP_VAR lai_variable_t object2 = LAI_VAR_INITIALIZER;
             lai_exec_get_objectref(state, &operands[4], &object2);
 
             LAI_CLEANUP_VAR lai_variable_t start_index_var = LAI_VAR_INITIALIZER;
-            lai_exec_get_integer(state, &operands[5], &start_index_var);
+            LAI_TRY(lai_exec_get_integer(state, &operands[5], &start_index_var));
             size_t start_index = start_index_var.integer;
 
             result.type = LAI_INTEGER;
@@ -992,7 +988,7 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
             LAI_CLEANUP_VAR lai_variable_t operand = LAI_VAR_INITIALIZER;
             lai_exec_get_objectref(state, &operands[0], &operand);
             LAI_CLEANUP_VAR lai_variable_t size_var = LAI_VAR_INITIALIZER;
-            lai_exec_get_integer(state, &operands[1], &size_var);
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &size_var));
 
             lai_api_error_t error = lai_obj_to_string(&result, &operand, size_var.integer);
             if (error != LAI_ERROR_NONE)
@@ -1005,9 +1001,9 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
             LAI_CLEANUP_VAR lai_variable_t object = LAI_VAR_INITIALIZER;
             lai_exec_get_objectref(state, &operands[0], &object);
             LAI_CLEANUP_VAR lai_variable_t index = LAI_VAR_INITIALIZER;
-            lai_exec_get_integer(state, &operands[1], &index);
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &index));
             LAI_CLEANUP_VAR lai_variable_t length = LAI_VAR_INITIALIZER;
-            lai_exec_get_integer(state, &operands[2], &length);
+            LAI_TRY(lai_exec_get_integer(state, &operands[2], &length));
 
             size_t strl = 0;
             size_t n = index.integer;
@@ -1061,7 +1057,7 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case NOTIFY_OP: {
             LAI_CLEANUP_VAR lai_variable_t code = LAI_VAR_INITIALIZER;
             LAI_ENSURE(operands[0].tag == LAI_RESOLVED_NAME);
-            lai_exec_get_integer(state, &operands[1], &code);
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &code));
 
             lai_nsnode_t *node = operands[0].handle;
             LAI_ENSURE(node->type == LAI_NAMESPACE_DEVICE || node->type == LAI_NAMESPACE_PROCESSOR
@@ -1116,7 +1112,7 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
                 lai_panic("host does not provide timer functions required by Stall()");
 
             LAI_CLEANUP_VAR lai_variable_t time = {0};
-            lai_exec_get_integer(state, &operands[0], &time);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &time));
 
             if (!time.integer)
                 time.integer = 1;
@@ -1137,7 +1133,7 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
                 lai_panic("host does not provide timer functions required by Sleep()");
 
             LAI_CLEANUP_VAR lai_variable_t time = {0};
-            lai_exec_get_integer(state, &operands[0], &time);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &time));
 
             if (!time.integer)
                 time.integer = 1;
@@ -1146,13 +1142,13 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         }
         case (EXTOP_PREFIX << 8) | FATAL_OP: {
             LAI_CLEANUP_VAR lai_variable_t fatal_type = LAI_VAR_INITIALIZER;
-            lai_exec_get_integer(state, &operands[0], &fatal_type);
+            LAI_TRY(lai_exec_get_integer(state, &operands[0], &fatal_type));
 
             LAI_CLEANUP_VAR lai_variable_t fatal_data = LAI_VAR_INITIALIZER;
-            lai_exec_get_integer(state, &operands[1], &fatal_data);
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &fatal_data));
 
             LAI_CLEANUP_VAR lai_variable_t fatal_arg = LAI_VAR_INITIALIZER;
-            lai_exec_get_integer(state, &operands[2], &fatal_arg);
+            LAI_TRY(lai_exec_get_integer(state, &operands[2], &fatal_arg));
 
             if (!fatal_type.integer)
                 fatal_type.integer = 0;
@@ -1171,7 +1167,7 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case (EXTOP_PREFIX << 8) | ACQUIRE_OP: {
             LAI_CLEANUP_VAR lai_variable_t timeout = LAI_VAR_INITIALIZER;
             LAI_ENSURE(operands[0].tag == LAI_RESOLVED_NAME);
-            lai_exec_get_integer(state, &operands[1], &timeout);
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &timeout));
 
             lai_nsnode_t *node = operands[0].handle;
             LAI_ENSURE(node->type == LAI_NAMESPACE_MUTEX);
@@ -1198,7 +1194,7 @@ static lai_api_error_t lai_exec_reduce_op(int opcode, lai_state_t *state,
         case (EXTOP_PREFIX << 8) | WAIT_OP: {
             LAI_CLEANUP_VAR lai_variable_t timeout = LAI_VAR_INITIALIZER;
             LAI_ENSURE(operands[0].tag == LAI_RESOLVED_NAME);
-            lai_exec_get_integer(state, &operands[1], &timeout);
+            LAI_TRY(lai_exec_get_integer(state, &operands[1], &timeout));
 
             lai_nsnode_t *node = operands[0].handle;
             LAI_ENSURE(node->type == LAI_NAMESPACE_EVENT);
@@ -1502,7 +1498,7 @@ static lai_api_error_t lai_exec_process(lai_state_t *state) {
             return error;
         } else if (item->pkg_phase == 1) {
             LAI_CLEANUP_VAR lai_variable_t size = LAI_VAR_INITIALIZER;
-            lai_exec_get_integer(state, &frame[1], &size);
+            LAI_TRY(lai_exec_get_integer(state, &frame[1], &size));
 
             lai_exec_pop_opstack_back(state);
 
@@ -1731,7 +1727,7 @@ static lai_api_error_t lai_exec_process(lai_state_t *state) {
             if (k == 1) {
                 LAI_CLEANUP_VAR lai_variable_t predicate = LAI_VAR_INITIALIZER;
                 struct lai_operand *operand = lai_exec_get_opstack(state, item->opstack_frame);
-                lai_exec_get_integer(state, operand, &predicate);
+                LAI_TRY(lai_exec_get_integer(state, operand, &predicate));
                 lai_exec_pop_opstack_back(state);
 
                 if (predicate.integer) {
@@ -1763,7 +1759,7 @@ static lai_api_error_t lai_exec_process(lai_state_t *state) {
             if (k == 1) {
                 LAI_CLEANUP_VAR lai_variable_t predicate = LAI_VAR_INITIALIZER;
                 struct lai_operand *operand = lai_exec_get_opstack(state, item->opstack_frame);
-                lai_exec_get_integer(state, operand, &predicate);
+                LAI_TRY(lai_exec_get_integer(state, operand, &predicate));
                 lai_exec_pop_opstack_back(state);
 
                 if (predicate.integer) {
@@ -1806,7 +1802,7 @@ static lai_api_error_t lai_exec_process(lai_state_t *state) {
             lai_nsnode_t *bank_node = operand->handle;
 
             operand = lai_exec_get_opstack(state, item->opstack_frame + 2);
-            lai_exec_get_integer(state, operand, &bank_value_var);
+            LAI_TRY(lai_exec_get_integer(state, operand, &bank_value_var));
             uint64_t bank_value = bank_value_var.integer;
 
             lai_exec_pop_opstack(state, 3);
@@ -1853,9 +1849,7 @@ static lai_api_error_t lai_exec_process(lai_state_t *state) {
                         node->fld_bkf_bank_node = bank_node;
                         node->fld_bkf_value = bank_value;
                         lai_do_resolve_new_node(node, ctx_handle, &field_amln);
-                        lai_api_error_t err = lai_install_nsnode(node);
-                        if (err != LAI_ERROR_NONE)
-                            return err;
+                        LAI_TRY(lai_install_nsnode(node));
 
                         if (invocation)
                             lai_list_link(&invocation->per_method_list, &node->per_method_item);
@@ -2414,8 +2408,8 @@ static lai_api_error_t lai_exec_parse(int parse_mode, lai_state_t *state) {
                 lai_exec_pop_stack_back(state);
             }
 
-            // Keep the LAI_LOOP_STACKITEM but reset the PC.
-            pc = loop_item->loop_pred;
+            // Set the PC of the block to its limit, to trigger a recheck of the predicate.
+            lai_exec_peek_blkstack_back(state)->pc = lai_exec_peek_blkstack_back(state)->limit;
             break;
         }
         /* Break Loop */
@@ -2543,9 +2537,7 @@ static lai_api_error_t lai_exec_parse(int parse_mode, lai_state_t *state) {
             lai_nsnode_t *node = lai_create_nsnode_or_die();
             node->type = LAI_NAMESPACE_DEVICE;
             lai_do_resolve_new_node(node, ctx_handle, &amln);
-            lai_api_error_t err = lai_install_nsnode(node);
-            if (err != LAI_ERROR_NONE)
-                return err;
+            LAI_TRY(lai_install_nsnode(node));
 
             if (invocation)
                 lai_list_link(&invocation->per_method_list, &node->per_method_item);
@@ -2590,9 +2582,7 @@ static lai_api_error_t lai_exec_parse(int parse_mode, lai_state_t *state) {
             node->pblk_len = pblk_len;
 
             lai_do_resolve_new_node(node, ctx_handle, &amln);
-            lai_api_error_t err = lai_install_nsnode(node);
-            if (err != LAI_ERROR_NONE)
-                return err;
+            LAI_TRY(lai_install_nsnode(node));
 
             if (invocation)
                 lai_list_link(&invocation->per_method_list, &node->per_method_item);
@@ -2632,9 +2622,7 @@ static lai_api_error_t lai_exec_parse(int parse_mode, lai_state_t *state) {
             lai_nsnode_t *node = lai_create_nsnode_or_die();
             node->type = LAI_NAMESPACE_POWERRESOURCE;
             lai_do_resolve_new_node(node, ctx_handle, &amln);
-            lai_api_error_t err = lai_install_nsnode(node);
-            if (err != LAI_ERROR_NONE)
-                return err;
+            LAI_TRY(lai_install_nsnode(node));
 
             if (invocation)
                 lai_list_link(&invocation->per_method_list, &node->per_method_item);
@@ -2670,9 +2658,7 @@ static lai_api_error_t lai_exec_parse(int parse_mode, lai_state_t *state) {
             lai_nsnode_t *node = lai_create_nsnode_or_die();
             node->type = LAI_NAMESPACE_THERMALZONE;
             lai_do_resolve_new_node(node, ctx_handle, &amln);
-            lai_api_error_t err = lai_install_nsnode(node);
-            if (err != LAI_ERROR_NONE)
-                return err;
+            LAI_TRY(lai_install_nsnode(node));
 
             if (invocation)
                 lai_list_link(&invocation->per_method_list, &node->per_method_item);
@@ -2712,9 +2698,7 @@ static lai_api_error_t lai_exec_parse(int parse_mode, lai_state_t *state) {
             node->amls = amls;
             node->pointer = method + nested_pc;
             node->size = pc - nested_pc;
-            lai_api_error_t err = lai_install_nsnode(node);
-            if (err != LAI_ERROR_NONE)
-                return err;
+            LAI_TRY(lai_install_nsnode(node));
 
             if (invocation)
                 lai_list_link(&invocation->per_method_list, &node->per_method_item);
@@ -2770,9 +2754,8 @@ static lai_api_error_t lai_exec_parse(int parse_mode, lai_state_t *state) {
                           lai_stringify_amlname(&target_amln));
             lai_do_resolve_new_node(node, ctx_handle, &dest_amln);
 
-            lai_api_error_t err = lai_install_nsnode(node);
-            if (err != LAI_ERROR_NONE)
-                return err;
+            LAI_TRY(lai_install_nsnode(node));
+
             if (invocation)
                 lai_list_link(&invocation->per_method_list, &node->per_method_item);
             break;
@@ -2823,9 +2806,7 @@ static lai_api_error_t lai_exec_parse(int parse_mode, lai_state_t *state) {
             lai_nsnode_t *node = lai_create_nsnode_or_die();
             node->type = LAI_NAMESPACE_MUTEX;
             lai_do_resolve_new_node(node, ctx_handle, &amln);
-            lai_api_error_t err = lai_install_nsnode(node);
-            if (err != LAI_ERROR_NONE)
-                return err;
+            LAI_TRY(lai_install_nsnode(node));
 
             if (invocation)
                 lai_list_link(&invocation->per_method_list, &node->per_method_item);
@@ -2841,9 +2822,7 @@ static lai_api_error_t lai_exec_parse(int parse_mode, lai_state_t *state) {
             lai_nsnode_t *node = lai_create_nsnode_or_die();
             node->type = LAI_NAMESPACE_EVENT;
             lai_do_resolve_new_node(node, ctx_handle, &amln);
-            lai_api_error_t err = lai_install_nsnode(node);
-            if (err != LAI_ERROR_NONE)
-                return err;
+            LAI_TRY(lai_install_nsnode(node));
 
             if (invocation)
                 lai_list_link(&invocation->per_method_list, &node->per_method_item);
@@ -2918,9 +2897,7 @@ static lai_api_error_t lai_exec_parse(int parse_mode, lai_state_t *state) {
                         node->fld_size = skip_bits;
                         node->fld_offset = curr_off;
                         lai_do_resolve_new_node(node, ctx_handle, &field_amln);
-                        lai_api_error_t err = lai_install_nsnode(node);
-                        if (err != LAI_ERROR_NONE)
-                            return err;
+                        LAI_TRY(lai_install_nsnode(node));
 
                         if (invocation)
                             lai_list_link(&invocation->per_method_list, &node->per_method_item);
@@ -2986,9 +2963,7 @@ static lai_api_error_t lai_exec_parse(int parse_mode, lai_state_t *state) {
                         node->fld_size = skip_bits;
                         node->fld_offset = curr_off;
                         lai_do_resolve_new_node(node, ctx_handle, &field_amln);
-                        lai_api_error_t err = lai_install_nsnode(node);
-                        if (err != LAI_ERROR_NONE)
-                            return err;
+                        LAI_TRY(lai_install_nsnode(node));
 
                         if (invocation)
                             lai_list_link(&invocation->per_method_list, &node->per_method_item);
